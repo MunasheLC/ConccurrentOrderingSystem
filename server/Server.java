@@ -2,12 +2,19 @@ package server;
 
 import shared.OSserver;
 
+import java.io.FileNotFoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 
 public class Server implements OSserver {
     private final HashMap users = new HashMap<String,String>();
+
+    public List<String[]> getProducts() throws FileNotFoundException { //get items from csv file in Product.java
+        Products prod = new Products();
+        List<String[]> items = prod.displayProducts(); //returns a list of products & their information
+        return items; //return these products to the client
+    }
 
     public Server() throws RemoteException{
         UnicastRemoteObject.exportObject(this,0); //exports the remote object
