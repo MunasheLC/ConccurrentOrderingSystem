@@ -5,7 +5,7 @@ import java.rmi.RemoteException;
 
 public class ClientStart {
 
-    public static void main(String[] args) throws RemoteException, NotBoundException {
+    public static void main(String[] args) throws RemoteException, NotBoundException, FileNotFoundException {
         Client client = new Client();
         client.clientStart();
 
