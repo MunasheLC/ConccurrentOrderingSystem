@@ -3,6 +3,7 @@ package server;
 import shared.OSserver;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
@@ -101,12 +102,28 @@ public class Server implements OSserver {
 
         return response;
     }
+
     private void addUsersToMap(){ //places users into hashmap
         users.put("Admin", "admin");
         users.put("user1", "welcome123");
     }
 
-    public String confirmOrder(HashMap<String, Integer> order){
+    public void convertHashMap() throws IOException {
+        Products prod = new Products();
+        StringBuilder convertMap = new StringBuilder();
+        for (String key : products.keySet()) {
+            Map innerMap = products.get(key);
+            convertMap.append(key + " ");
+            for (Object k : innerMap.keySet()) {
+                convertMap.append(innerMap.get(k) + " ");
+            }
+            convertMap.append("\n");
+        }
+        convertMap.delete(convertMap.length()-2, convertMap.length());
+        prod.overWrite(convertMap);
+    }
+
+    public String confirmOrder(HashMap<String, Integer> order) throws IOException {
         //Checks if items are in stock
         Set set = order.entrySet();
         Iterator iter = set.iterator();
@@ -133,6 +150,9 @@ public class Server implements OSserver {
             }
 
             else {
+                int newQty = currentQty - orderQty;
+                products.get(item).replace("Quantity", newQty);
+                convertHashMap();
                 response += item + "It's on it's way boss\n";
             }
 
