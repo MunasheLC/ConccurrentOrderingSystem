@@ -1,7 +1,6 @@
 package client;
-
+import server.Products;
 import shared.OSserver;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.rmi.NotBoundException;
@@ -13,22 +12,18 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.chrono.ChronoLocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Scanner;
-
+import java.util.*;
 
 public class Client {
-
     LocalDate date;
     String user;
-    String item2;
+    String temp_item;
     private OSserver server;
     boolean running;
     LocalDateTime ldt;
-    //    HashMap<String, Integer> order;
     HashMap<String, HashMap> products;
     HashMap<String, HashMap> usersOrders;
+    String temp_date;
 
     public Client() {
 
@@ -41,30 +36,95 @@ public class Client {
         System.out.println("-----------");
         System.out.println("    Menu   ");
         System.out.println("-----------");
-        System.out.println("1) Display Products \n2) Create Order\n3) Check item Availability\n4) Current Orders\n5) Remove Order\n6) Exit");
+        System.out.println("1) Display Products \n2) Create Order\n3) List of projected availability\n4) Check item Availability\n5) Current Orders\n6) Remove Order\n7) TestMode\n8) Exit ");
         System.out.print("Selection: ");
     }
-    String dd;
+
+    public void testMode() throws IOException {
+        HashMap<String, Integer> order = new HashMap<>();
+        List<String> myList = Arrays.asList("Apples", "Oranges", "GameBoy", "JoltCola"); //get random item
+        Random r = new Random();
+        int randomitem = r.nextInt(myList.size());
+        String item = myList.get(randomitem);
+        int qty = r.nextInt((600 - 200) + 1) + 200; //pick a random qty
+
+        List<String> dates = Arrays.asList("20-06-2021", "16-07-2021", "05-08-2021", "22-09-2021"); //pick a date
+        int randomdate = r.nextInt(dates.size());
+        String date_item = dates.get(randomdate);
+
+        order.put(item, qty);
+
+        //create Order
+        System.out.println("--------------------");
+        System.out.println("    Create Order    ");
+        System.out.println("--------------------");
+        System.out.println("You want to order: " + item + " for the date: " + date_item);
+        String orderReport = server.confirmOrder(date_item,order);
+        System.out.println(orderReport);
+
+        //get available Predict of an item
+        System.out.println("---------------------------------------");
+        System.out.println("    Predict Availability of An Item    ");
+        System.out.println("---------------------------------------");
+        getDate(item,qty,date_item);
+        int result = server.predictAvailabilityForAnItem(ldt, item);
+        System.out.println("Order prediction for item: " + item + " = " + result);
+
+        // Predict availability for all items
+        System.out.println("---------------------------------------");
+        System.out.println("    Predict Availability All Items     ");
+        System.out.println("---------------------------------------");
+        StringBuilder PredictResult = server.predictAvailabilityForAll();
+        System.out.println(PredictResult);
+
+        //check current orders
+        checkCurrentOrders();
+
+        //remove an order
+        System.out.println("--------------------");
+        System.out.println("    Remove An Order ");
+        System.out.println("--------------------");
+        Products prod = new Products();
+        List<String> IDList = new ArrayList();
+        List<String []> results = prod.displayOrders(user);
+        for (String [] items : results){
+            IDList.add(items[0]);
+        }
+        int randomID = r.nextInt(IDList.size());
+        String ranID = IDList.get(randomID);
+        System.out.println("Removing item with ID: " + ranID);
+        server.cancelOrder(ranID);
+        checkCurrentOrders();
+
+        System.out.println("Terminating Client..");
+        exitClient();
+    }
+    public void getDate(String item, int qty, String inputted_date){
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        LocalDate StringToDate = LocalDate.parse(inputted_date,formatter);
+
+        System.out.println("You want " + qty + " " + item + "'s" + " for the date " + StringToDate);
+
+        LocalDateTime now = LocalDateTime.now();
+        if (StringToDate.isBefore(ChronoLocalDate.from(now))){ //check if date is valid
+
+            System.out.println("date is not valid - " + inputted_date + " is before the current date");
+        }
+        ldt = LocalDateTime.of(StringToDate, LocalTime.of(0,0));
+    }
     public void createOrder() {
 
         boolean ordering = true;
         HashMap<String, Integer> order = new HashMap<>();
 
-        System.out.println("-----------");
-        System.out.println("    Create Order   ");
-        System.out.println("-----------");
+        System.out.println("--------------------");
+        System.out.println("    Create Order    ");
+        System.out.println("--------------------");
         System.out.println("Select item and enter quantity");
 
-
         while (ordering) {
-
-//                 Name -> Qty that info -> server -> products
-
-
             try {
                 Scanner in = new Scanner(System.in);
-
-
                 List<String[]> lines = server.getProducts(); //gets list of products & information from server
 
                 int num = 1;
@@ -84,37 +144,18 @@ public class Client {
                 String item = in.nextLine();
                 System.out.println("You entered: " + item);
 
-
-
                 if (products.containsKey(item)) {
-
-                    item2 = item;
+                    temp_item = item;
                     System.out.println("Enter item qty");
                     int qty = in.nextInt();
 
                     System.out.println("Enter date: (dd-mm-yyyy) ");
-                    var d = in.next();
-                    dd = d;
-                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
-                    LocalDate date2 = LocalDate.parse(d,formatter);
-
-                    System.out.println("You want " + qty + " " + item + "'s" + " for the date " + date2);
-
-                    LocalDateTime now = LocalDateTime.now();
-                    if (date2.isBefore(ChronoLocalDate.from(now))){ //check if date is valid
-
-                        System.out.println("date is not valid - " + d + " is before the current date");
-                    }
-//                    System.out.println(date2 + " " + now);
-                    System.out.println("date is valid");
-                    date = date2;
+                    var inputted_date = in.next();
+                    temp_date = inputted_date;
+                    getDate(item, qty, inputted_date);
 
                     order.put(item, qty);
                     this.usersOrders.put(user,order);
-
-                    ldt = LocalDateTime.of(date2, LocalTime.of(0,0));
-
-                    System.out.println(this.usersOrders);
 
                 }
 
@@ -123,7 +164,7 @@ public class Client {
                     System.out.println("confirming order: " + order);
 
                     try {
-                        orderReport = server.confirmOrder(dd,order);
+                        orderReport = server.confirmOrder(temp_date,order);
                         System.out.println(orderReport);
                     }
                     catch (Exception e){
@@ -146,7 +187,6 @@ public class Client {
 
 
     }
-
     public boolean login() {
         System.out.println("-----------");
         System.out.println("   Login   ");
@@ -182,36 +222,49 @@ public class Client {
 
         return true;
     }
-
-
     public void exitClient() {
 
         this.running = false;
 
     }
     public void removeOrder() throws IOException {
+        System.out.println("\n");
+        System.out.println("----------- Remove An Order -----------");
         Boolean removing = true;
-        while(removing) {
-            checkCurrentOrders();
-            try {
-                Scanner in = new Scanner(System.in);
-                System.out.println("Enter Order Id: ");
-                String id = in.next();
-                server.cancelOrder(id);
-                checkCurrentOrders();
-                removing = false;
-            }catch(RemoteException e){
-                e.printStackTrace();
+        var result = checkCurrentOrders();
+        if (result) {
+            while (removing) {
+                try {
+                    Scanner in = new Scanner(System.in);
+                    System.out.println("Enter Order ID in which you want to remove ( Enter CANCEL to cancel this operation ) : ");
+                    String id = in.next();
+                    if (!id.equals("CANCEL")) {
+                        server.cancelOrder(id);
+                        checkCurrentOrders();
+                        removing = false;
+                    }
+                    else{
+                        removing = false;
+                        System.out.println("> CANCEL");
+                    }
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
             }
         }
         display_menu();
 
     }
+    public void displayPredictForAll() throws FileNotFoundException, RemoteException {
+        System.out.println("-- Item Availability Prediction over the next 6 months --");
+        StringBuilder result = server.predictAvailabilityForAll();
+        System.out.println(result);
+        display_menu();
 
-    public void displayPredict() throws FileNotFoundException, RemoteException {
+    }
+    public void displayPredictForAnItem() throws FileNotFoundException, RemoteException {
         try {
             Scanner in = new Scanner(System.in);
-            System.out.println("\nEnter 'complete' to finish ordering ");
             System.out.print("Enter item name: \n");
             String item = in.nextLine();
             System.out.println("You entered: " + item);
@@ -230,8 +283,9 @@ public class Client {
 //                    System.out.println(date2 + " " + now);
                 System.out.println("date is valid");
                 ldt = LocalDateTime.of(date2, LocalTime.of(0,0));
-                int result = server.displayPredictAvailability(ldt, item);
-                System.out.println("Order prediction: " + item + " " + result);
+                int result = server.predictAvailabilityForAnItem(ldt, item);
+                System.out.println("Order prediction: " + item + " " + result + "\n");
+                display_menu();
 
             }
         }
@@ -240,7 +294,10 @@ public class Client {
         e.printStackTrace();
         }
     }
-    public void checkCurrentOrders() throws FileNotFoundException, RemoteException {
+    public boolean checkCurrentOrders() throws FileNotFoundException, RemoteException {
+        System.out.println("---------------------");
+        System.out.println("    Current Orders   ");
+        System.out.println("---------------------");
         List<String[]> results = server.displayPrevOrders(user);
         StringBuilder newString = new StringBuilder();
         for (String[] i : results){
@@ -249,9 +306,15 @@ public class Client {
             }
             newString.append("\n");
         }
-        System.out.println(newString);
-    }
+        if(newString.length() == 0){
+            System.out.println("There are no current orders..");
+            return false;
 
+        }
+        System.out.println("ID                                   USER    ITEM    DATE     QTY");
+        System.out.println(newString);
+        return true;
+    }
     public void clientStart() throws RemoteException, NotBoundException, FileNotFoundException {
 
         Registry reg = LocateRegistry.getRegistry("localhost", 1099); //getting the registry
@@ -279,10 +342,15 @@ public class Client {
                         display_menu();
                     }
                     case 2 -> createOrder();
-                    case 3 -> displayPredict();
-                    case 4 -> checkCurrentOrders();
-                    case 5 -> removeOrder();
-                    case 6 -> exitClient();
+                    case 3 -> displayPredictForAll();
+                    case 4 -> displayPredictForAnItem();
+                    case 5 -> {
+                        checkCurrentOrders();
+                        display_menu();
+                    }
+                    case 6 -> removeOrder();
+                    case 7 -> testMode();
+                    case 8 -> exitClient();
                     default -> System.err.println("Unrecognized option");
                 }
 
