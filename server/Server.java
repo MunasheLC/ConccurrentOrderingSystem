@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class Server implements OSserver {
-    private final HashMap users = new HashMap<String,String>();
+    private final HashMap users = new HashMap<String, String>();
 
     HashMap<String, HashMap> products;
     String user;
@@ -24,6 +24,7 @@ public class Server implements OSserver {
         writer.append("\n");
         writer.close();
     }
+
     //Always gets latest prod info
     public List<String[]> getProducts() throws FileNotFoundException { //get items from csv file in Product.java
         Products prod = new Products();
@@ -35,15 +36,15 @@ public class Server implements OSserver {
         keys.add("Restock Date");
         keys.add("Restock Quantity");
 
-        for (String[] item : items){
+        for (String[] item : items) {
             HashMap<String, Integer> values = new HashMap<String, Integer>();
             String name = item[0];
 
             int j = 0;
-            for (int i=1 ; i < item.length; i++){
+            for (int i = 1; i < item.length; i++) {
                 int value = Integer.parseInt(item[i]);
                 values.put(keys.get(j), value);
-                j+=1;
+                j += 1;
 //                System.out.println("values: " + values);
             }
             products.put(name, values);
@@ -53,52 +54,54 @@ public class Server implements OSserver {
     }
 
     public HashMap<String, HashMap> receiveProds() throws FileNotFoundException {
-        getProducts() ;
+        getProducts();
         return products;
     }
 
-    public Server() throws RemoteException{
+    public Server() throws RemoteException {
         this.products = new HashMap<>();
 
-        UnicastRemoteObject.exportObject(this,0); //exports the remote object
+        UnicastRemoteObject.exportObject(this, 0); //exports the remote object
     }
-    public String userlogin(String username, String password){
+
+    public String userlogin(String username, String password) {
         addUsersToMap();
-        return userAuthorization(username,password);
+        return userAuthorization(username, password);
     }
-    private String userAuthorization(String username , String password){ //checks if the username and password is correct and in the hashmap.
+
+    private String userAuthorization(String username, String password) { //checks if the username and password is correct and in the hashmap.
         String response = "";
         user = username;
         Set set = users.entrySet();
         Iterator iter = set.iterator();
         boolean inMap_check = false;
 
-        while(iter.hasNext()){
+        while (iter.hasNext()) {
             response = "";
             Map.Entry entry = (Map.Entry) iter.next();
 
             String user = entry.getKey().toString();
             String pass = entry.getValue().toString();
 
-            if(username.equals(user)){
+            if (username.equals(user)) {
                 inMap_check = true;
-                if(password.equals(pass)){
+                if (password.equals(pass)) {
                     System.out.println("User logged in");
                     response = "Login Successful";
-                }else{
+                } else {
                     response = "Password Incorrect..";
                 }
                 break;
             }
         }
-        if(!inMap_check){
+        if (!inMap_check) {
             response = "User does not exist";
         }
 
         return response;
     }
 
-    private void addUsersToMap(){ //places users into hashmap
+    private void addUsersToMap() { //places users into hashmap
         users.put("Admin", "admin");
         users.put("user1", "welcome123");
     }
@@ -114,7 +117,7 @@ public class Server implements OSserver {
             }
             convertMap.append("\n");
         }
-        convertMap.delete(convertMap.length()-2, convertMap.length());
+        convertMap.delete(convertMap.length() - 2, convertMap.length());
         prod.overWrite(convertMap);
     }
 
@@ -131,9 +134,7 @@ public class Server implements OSserver {
         response = "";
         String id = UUID.randomUUID().toString();
 
-        while(iter.hasNext()){
-
-
+        while (iter.hasNext()) {
             Map.Entry entry = (Map.Entry) iter.next();
 
             String item = entry.getKey().toString();
@@ -142,23 +143,20 @@ public class Server implements OSserver {
             int currentQty = (int) products.get(item).get("Quantity");
             int orderQty = order.get(item);
             StringBuilder newString = new StringBuilder();
-            newString.append(id +" ");
-            newString.append(user+" ");
-            newString.append(item+" ");
-            newString.append(date+" ");
-            newString.append(orderQty+" ");
-            newString.delete(newString.length()-1, newString.length());
+            newString.append(id + " ");
+            newString.append(user + " ");
+            newString.append(item + " ");
+            newString.append(date + " ");
+            newString.append(orderQty + " ");
+            newString.delete(newString.length() - 1, newString.length());
             writeToOrdersCSV(newString);
             System.out.println(item + ":" + currentQty + "in stock");
             System.out.println("The order amount is: " + orderQty);
 
-            if (orderQty > currentQty){
+            if (orderQty > currentQty) {
                 response += item + " Out of stock, can't place order\n";
 
-
-            }
-
-            else {
+            } else {
                 int newQty = currentQty - orderQty;
                 products.get(item).replace("Quantity", newQty);
                 convertHashMap();
@@ -170,16 +168,17 @@ public class Server implements OSserver {
 
 
     }
+
     public List displayPrevOrders(String user) throws FileNotFoundException {
         Products prod = new Products();
-        List <String[]>orders = prod.displayOrders(user);
+        List<String[]> orders = prod.displayOrders(user);
         return orders;
 
     }
 
-    public int displayPredictAvailability(LocalDateTime date, String item) throws RemoteException, FileNotFoundException {
+    public int predictAvailabilityForAnItem(LocalDateTime date, String item) throws RemoteException, FileNotFoundException {
         Products prod = new Products();
-        List <String[]>orders = prod.displayOrders(item); //displays orders from the Order.csv file that contains item for instance "Apple"
+        List<String[]> orders = prod.displayOrders(item); //displays orders from the Order.csv file that contains item for instance "Apple"
         //get restock date for the item
         int restockdate = (int) products.get(item).get("Restock Date");
         int restockq = (int) products.get(item).get("Restock Quantity");
@@ -187,19 +186,61 @@ public class Server implements OSserver {
         int orderqty = 0;
 
         LocalDate restock = LocalDate.now().withDayOfMonth(restockdate).plusMonths(1);
-        while(restock.isBefore(ChronoLocalDate.from(date))){
+        while (restock.isBefore(ChronoLocalDate.from(date))) {
             restock = restock.plusMonths(1);
             predictQ += restockq;
         }
-        for ( String[] items : orders){ //for each line that appeared in orders that contains the item
+        for (String[] items : orders) { //for each line that appeared in orders that contains the item
             String orderD = items[3]; //get the date
             orderqty = Integer.parseInt(items[4]); //get the qty
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
-            LocalDate orderDate = LocalDate.parse(orderD,formatter);
-            if(orderDate.isBefore(ChronoLocalDate.from(date))){ //if the date is before the current order date
+            LocalDate orderDate = LocalDate.parse(orderD, formatter);
+            if (orderDate.isBefore(ChronoLocalDate.from(date))) { //if the date is before the current order date
                 predictQ -= orderqty;
             }
         }
         return predictQ;
+    }
+
+    public StringBuilder predictAvailabilityForAll() throws FileNotFoundException {
+        Products prod = new Products();
+        StringBuilder string = new StringBuilder();
+        //get restock date for the item
+        //iterate through hashmap
+        LocalDate date = LocalDate.now().plusMonths(1);
+        LocalDate SixMonths = LocalDate.now().plusMonths(7);
+        int d = 1;
+
+        while(date.isBefore(SixMonths)) {
+            string.append("| Month:" + d + " |" + " Item : Qty  "+  "\n");
+            for (String item : products.keySet()) {
+                int restockdate = (int) products.get(item).get("Restock Date");
+                int restockq = (int) products.get(item).get("Restock Quantity");
+                int predictQ = (int) products.get(item).get("Quantity");
+                List<String[]> orders = prod.displayOrders(item); //displays orders from the Order.csv file that contains item for instance "Apple"
+                int orderqty = 0;
+
+                LocalDate restock = LocalDate.now().withDayOfMonth(restockdate).plusMonths(1);
+                while (restock.isBefore(date)) {
+                    restock = restock.plusMonths(1);
+                    predictQ += restockq;
+                }
+                for (String[] items : orders) { //for each line that appeared in orders that contains the item
+                    String orderD = items[3]; //get the date
+                    orderqty = Integer.parseInt(items[4]); //get the qty
+                    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+                    LocalDate orderDate = LocalDate.parse(orderD, formatter);
+                    if (orderDate.isBefore(ChronoLocalDate.from(date))) { //if the date is before the current order date
+                        predictQ -= orderqty;
+                    }
+                }
+                //month item qty
+                string.append("         " + " | " + item + ": "  + predictQ + "\n");
+            }
+            date = date.plusMonths(1);
+            string.append("\n");
+            d +=1;
+        }
+        return string;
     }
 }
