@@ -15,7 +15,7 @@ public interface OSserver extends Remote {
     String userlogin(String username, String password) throws RemoteException;
     List<String[]> getProducts() throws RemoteException, FileNotFoundException;
     HashMap<String, HashMap> receiveProds() throws FileNotFoundException, RemoteException;
-    String  confirmOrder(String date, HashMap<String, Integer> order) throws IOException;
+    String  confirmOrder(String date, HashMap<String, Integer> order, String user) throws IOException;
     int predictAvailabilityForAnItem(LocalDateTime date, String text) throws RemoteException, FileNotFoundException;
     List<String[]>displayPrevOrders(String user) throws RemoteException, FileNotFoundException;
     void cancelOrder(String id) throws RemoteException, IOException;
