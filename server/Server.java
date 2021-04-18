@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 import java.time.chrono.ChronoLocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Server implements OSserver {
     private final HashMap users = new HashMap<String, String>();
@@ -17,12 +19,16 @@ public class Server implements OSserver {
     HashMap<String, HashMap> products;
     String user;
 
-    public void writeToOrdersCSV(StringBuilder text) throws IOException {
+    public void writeToOrdersCSV(StringBuilder text, String user) throws IOException {
 //        System.out.println(text);
+        Lock lock = new ReentrantLock(true);
+        System.out.println(user + " has the lock");
+        lock.lock();
         FileWriter writer = new FileWriter("server/Orders.csv", true);
         writer.append(text);
         writer.append("\n");
         writer.close();
+        lock.unlock();
     }
 
     //Always gets latest prod info
@@ -122,19 +128,26 @@ public class Server implements OSserver {
     }
 
     public void cancelOrder(String id) throws IOException {
+        Lock lock = new ReentrantLock(true);
+        lock.lock();
         Products prod = new Products();
         prod.removeOrders(id);
+        lock.unlock();
     }
 
-    public String confirmOrder(String date, HashMap<String, Integer> order) throws IOException {
+    public String confirmOrder(String date, HashMap<String, Integer> order, String user) throws IOException {
         //Checks if items are in stock
         Set set = order.entrySet();
         Iterator iter = set.iterator();
         String response;
         response = "";
         String id = UUID.randomUUID().toString();
-
+        Lock lock = new ReentrantLock(true);
+        lock.lock(); //Lock while trying to make changes to the products
         while (iter.hasNext()) {
+
+
+
             Map.Entry entry = (Map.Entry) iter.next();
 
             String item = entry.getKey().toString();
@@ -149,20 +162,22 @@ public class Server implements OSserver {
             newString.append(date + " ");
             newString.append(orderQty + " ");
             newString.delete(newString.length() - 1, newString.length());
-            writeToOrdersCSV(newString);
+            writeToOrdersCSV(newString, user);
             System.out.println(item + ":" + currentQty + "in stock");
             System.out.println("The order amount is: " + orderQty);
 
             if (orderQty > currentQty) {
-                response += item + " Out of stock, can't place order\n";
+                response += item + " None available at this date, can't place order\n";
 
             } else {
+
                 int newQty = currentQty - orderQty;
                 products.get(item).replace("Quantity", newQty);
                 convertHashMap();
                 response += item + "It's on it's way boss\n";
             }
         }
+        lock.unlock();
         return response;
         //If they are, make changes to file
 
