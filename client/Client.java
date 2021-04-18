@@ -13,8 +13,9 @@ import java.time.LocalTime;
 import java.time.chrono.ChronoLocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
-public class Client {
+public class Client  {
     LocalDate date;
     String user;
     String temp_item;
@@ -24,6 +25,8 @@ public class Client {
     HashMap<String, HashMap> products;
     HashMap<String, HashMap> usersOrders;
     String temp_date;
+
+
 
     public Client() {
 
@@ -40,7 +43,24 @@ public class Client {
         System.out.print("Selection: ");
     }
 
-    public void testMode() throws IOException {
+
+
+    public void testMode() throws IOException, InterruptedException {
+        //Set the name of thread maybe
+
+//        Timer timer = new Timer(); //For client execution times
+
+        Thread.sleep(ThreadLocalRandom.current().nextInt(10000));
+
+        List<String[]> lines = server.getProducts(); //gets list of products & information from server
+        for (String[] line : lines) {
+            String name = line[0];
+            int quantity = Integer.parseInt(line[1]);
+            int restockd = Integer.parseInt(line[2]);
+            int restockq = Integer.parseInt(line[3]);
+            System.out.println("Name: " + name + ", Quantity: " + quantity + ", Restock Date: " + restockd + ", Restock Quantity: " + restockq);
+        }
+
         HashMap<String, Integer> order = new HashMap<>();
         List<String> myList = Arrays.asList("Apples", "Oranges", "GameBoy", "JoltCola"); //get random item
         Random r = new Random();
@@ -59,8 +79,13 @@ public class Client {
         System.out.println("    Create Order    ");
         System.out.println("--------------------");
         System.out.println("You want to order: " + item + " for the date: " + date_item);
-        String orderReport = server.confirmOrder(date_item,order);
+        System.out.println("Confirming order ....");
+
+        String orderReport = server.confirmOrder(date_item,order, user);
         System.out.println(orderReport);
+        products = server.receiveProds();
+
+        Thread.sleep(ThreadLocalRandom.current().nextInt(10000)); //Wait random amount of time before next execution
 
         //get available Predict of an item
         System.out.println("---------------------------------------");
@@ -69,6 +94,7 @@ public class Client {
         getDate(item,qty,date_item);
         int result = server.predictAvailabilityForAnItem(ldt, item);
         System.out.println("Order prediction for item: " + item + " = " + result);
+        Thread.sleep(ThreadLocalRandom.current().nextInt(10000)); //Wait random amount of time before next execution
 
         // Predict availability for all items
         System.out.println("---------------------------------------");
@@ -76,9 +102,12 @@ public class Client {
         System.out.println("---------------------------------------");
         StringBuilder PredictResult = server.predictAvailabilityForAll();
         System.out.println(PredictResult);
+        Thread.sleep(ThreadLocalRandom.current().nextInt(10000)); //Wait random amount of time before next execution
 
         //check current orders
         checkCurrentOrders();
+
+        Thread.sleep(ThreadLocalRandom.current().nextInt(10000)); //Wait random amount of time before next execution
 
         //remove an order
         System.out.println("--------------------");
@@ -86,6 +115,7 @@ public class Client {
         System.out.println("--------------------");
         Products prod = new Products();
         List<String> IDList = new ArrayList();
+        System.out.println("The user is: " + user);
         List<String []> results = prod.displayOrders(user);
         for (String [] items : results){
             IDList.add(items[0]);
@@ -161,10 +191,10 @@ public class Client {
 
                 if(item.equals("complete")){
                     String orderReport;
-                    System.out.println("confirming order: " + order);
+                    System.out.println("confirming order: " + order + " ....");
 
                     try {
-                        orderReport = server.confirmOrder(temp_date,order);
+                        orderReport = server.confirmOrder(temp_date,order, user);
                         System.out.println(orderReport);
                     }
                     catch (Exception e){
@@ -315,11 +345,14 @@ public class Client {
         System.out.println(newString);
         return true;
     }
+
+
+
     public void clientStart() throws RemoteException, NotBoundException, FileNotFoundException {
 
         Registry reg = LocateRegistry.getRegistry("localhost", 1099); //getting the registry
         server = (OSserver) reg.lookup("serv"); //looking up the registry for the remote object
-        products = server.receiveProds();
+        products = server.receiveProds(); // Takes products from server
 
         login();
         while (running) {
@@ -361,4 +394,5 @@ public class Client {
             }
         }
     }
+
 }
